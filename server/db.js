@@ -17,15 +17,16 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS question_sets (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    title        TEXT NOT NULL,
-    description  TEXT,
-    text_content TEXT,
-    pdf_path     TEXT,
-    category     TEXT,
-    max_score    INTEGER NOT NULL DEFAULT 100,
-    created_by   INTEGER NOT NULL,
-    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    title            TEXT NOT NULL,
+    description      TEXT,
+    text_content     TEXT,
+    pdf_path         TEXT,
+    category         TEXT,
+    duration_minutes INTEGER,
+    max_score        INTEGER NOT NULL DEFAULT 100,
+    created_by       INTEGER NOT NULL,
+    created_at       TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (created_by) REFERENCES users(id)
   );
 
@@ -65,5 +66,10 @@ db.exec(`
     FOREIGN KEY (uploaded_by) REFERENCES users(id)
   );
 `);
+
+const questionSetInfo = db.prepare("PRAGMA table_info(question_sets)").all();
+if (!questionSetInfo.some((c) => c.name === 'duration_minutes')) {
+  db.exec('ALTER TABLE question_sets ADD COLUMN duration_minutes INTEGER');
+}
 
 module.exports = db;

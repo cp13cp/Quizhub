@@ -11,34 +11,81 @@ export default function QuestionSetView() {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
+  const [timeUp, setTimeUp] = useState(false);
+  const [autoSubmitted, setAutoSubmitted] = useState(false);
+  const [pinnedTimer, setPinnedTimer] = useState(false);
 
   useEffect(() => {
     api.get(`/api/question-sets/${id}`).then(setSet).catch((e) => setError(e.message));
   }, [id]);
 
-  const isQuiz = set && set.questions && set.questions.length > 0;
-
-  const submit = async (e) => {
-    e.preventDefault();
-    if (isQuiz && Object.keys(answers).length < set.questions.length) {
-      setError('Please answer every question before submitting.');
+  useEffect(() => {
+    if (!set || !set.duration_minutes || Number(set.duration_minutes) <= 0) {
+      setRemainingSeconds(null);
+      setTimeUp(false);
       return;
     }
+    let seconds = Number(set.duration_minutes) * 60;
+    setRemainingSeconds(seconds);
+    setTimeUp(false);
+    setAutoSubmitted(false);
+    // Auto-pin the floating timer when the quiz with a duration is opened
+    setPinnedTimer(true);
+
+    const interval = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(interval);
+          setTimeUp(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [set]);
+
+  const isQuiz = set && set.questions && set.questions.length > 0;
+
+  const doSubmit = async (payload) => {
     setBusy(true);
     setError('');
     try {
-      const res = await api.post('/api/submissions', {
-        question_set_id: Number(id),
-        answers: isQuiz ? answers : undefined,
-        answer_text: isQuiz ? undefined : answerText,
-      });
+      const res = await api.post('/api/submissions', payload);
       setResult(res);
+      setAutoSubmitted(true);
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy(false);
     }
   };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (isQuiz && !timeUp && Object.keys(answers).length < set.questions.length) {
+      setError('Please answer every question before submitting.');
+      return;
+    }
+    await doSubmit({
+      question_set_id: Number(id),
+      answers: isQuiz ? answers : undefined,
+      answer_text: isQuiz ? undefined : answerText,
+    });
+  };
+
+  useEffect(() => {
+    if (timeUp && !autoSubmitted && !busy && !result) {
+      doSubmit({
+        question_set_id: Number(id),
+        answers: isQuiz ? answers : undefined,
+        answer_text: isQuiz ? undefined : answerText,
+      });
+    }
+  }, [timeUp, autoSubmitted, busy, result, answers, answerText, id, isQuiz]);
 
   if (error && !set) return <div className="error">{error}</div>;
   if (!set) return <div className="center">Loading…</div>;
@@ -99,7 +146,17 @@ export default function QuestionSetView() {
     );
   }
 
-  // Reference material (PDF / text) — collapsible so it doesn't hide the questions
+  const hasDuration = set && set.duration_minutes && set.duration_minutes > 0;
+  const hours = hasDuration ? Math.floor(set.duration_minutes / 60) : 0;
+  const minutes = hasDuration ? set.duration_minutes % 60 : 0;
+
+  const formatSeconds = (secs) => {
+    if (secs === null) return '';
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
+
   const reference = (set.text_content || set.pdf_path) && (
     <details className="panel reference-details">
       <summary>📎 Reference material {set.pdf_path ? '(PDF)' : ''}</summary>
@@ -119,6 +176,31 @@ export default function QuestionSetView() {
       <button className="btn-ghost" onClick={() => navigate('/dashboard')}>← Back</button>
       <h1>{set.title}</h1>
       {set.description && <p className="muted">{set.description}</p>}
+      {hasDuration && (
+        <div className="panel timing-card">
+          <strong>Time limit:</strong> {hours > 0 ? `${hours}h ` : ''}{minutes}m
+          {remainingSeconds !== null && (
+            <span
+              className={`timer ${timeUp ? 'timer-danger' : ''}`}
+              onClick={() => setPinnedTimer(true)}
+              title="Click to pin timer"
+              style={{ cursor: 'pointer' }}
+            >
+              {timeUp ? 'Time is up' : `Remaining: ${formatSeconds(remainingSeconds)}`}
+            </span>
+          )}
+        </div>
+      )}
+
+      {pinnedTimer && remainingSeconds !== null && (
+        <div
+          className={`floating-timer ${timeUp ? 'timer-danger' : ''}`}
+          onClick={() => setPinnedTimer(false)}
+          title="Click to unpin timer"
+        >
+          <div className="timer-circle">{timeUp ? '0:00' : formatSeconds(remainingSeconds)}</div>
+        </div>
+      )}
 
       <form onSubmit={submit}>
         {isQuiz ? (

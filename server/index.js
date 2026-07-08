@@ -1,5 +1,4 @@
-﻿require('dotenv').config();
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
@@ -144,16 +143,26 @@ function parseQuestions(raw) {
 }
 
 app.post('/api/question-sets', requireAuth, requireAdmin, upload.single('pdf'), async (req, res) => {
-  const { title, description, text_content, max_score, category } = req.body || {};
+  const { title, description, text_content, max_score, category, duration_minutes } = req.body || {};
   if (!title) return res.status(400).json({ error: 'title is required' });
 
   const questions = parseQuestions(req.body?.questions);
   const pdfPath = req.file ? `/uploads/${req.file.filename}` : null;
+  const duration = duration_minutes ? Number(duration_minutes) : null;
 
   const info = await db.prepare(
-    `INSERT INTO question_sets (title, description, text_content, pdf_path, category, max_score, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(title.trim(), description || null, text_content || null, pdfPath, category || null, Number(max_score) || 100, req.user.id);
+    `INSERT INTO question_sets (title, description, text_content, pdf_path, category, duration_minutes, max_score, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    title.trim(),
+    description || null,
+    text_content || null,
+    pdfPath,
+    category || null,
+    duration,
+    Number(max_score) || 100,
+    req.user.id
+  );
 
   const setId = info.lastInsertRowid;
   for (const q of questions) {
@@ -169,7 +178,7 @@ app.post('/api/question-sets', requireAuth, requireAdmin, upload.single('pdf'), 
 
 app.patch('/api/question-sets/:id', requireAuth, requireAdmin, upload.single('pdf'), async (req, res) => {
   const id = req.params.id;
-  const { title, description, text_content, max_score, category } = req.body || {};
+  const { title, description, text_content, max_score, category, duration_minutes } = req.body || {};
   if (!title) return res.status(400).json({ error: 'title is required' });
 
   const existing = await db.prepare('SELECT * FROM question_sets WHERE id = ?').get(id);
@@ -184,9 +193,19 @@ app.patch('/api/question-sets/:id', requireAuth, requireAdmin, upload.single('pd
     pdfPath = `/uploads/${req.file.filename}`;
   }
 
+  const duration = duration_minutes ? Number(duration_minutes) : null;
   await db.prepare(
-    `UPDATE question_sets SET title = ?, description = ?, text_content = ?, pdf_path = ?, category = ?, max_score = ? WHERE id = ?`
-  ).run(title.trim(), description || null, text_content || null, pdfPath, category || null, Number(max_score) || 100, id);
+    `UPDATE question_sets SET title = ?, description = ?, text_content = ?, pdf_path = ?, category = ?, duration_minutes = ?, max_score = ? WHERE id = ?`
+  ).run(
+    title.trim(),
+    description || null,
+    text_content || null,
+    pdfPath,
+    category || null,
+    duration,
+    Number(max_score) || 100,
+    id
+  );
 
   const questions = parseQuestions(req.body?.questions);
   await db.prepare('DELETE FROM questions WHERE question_set_id = ?').run(id);

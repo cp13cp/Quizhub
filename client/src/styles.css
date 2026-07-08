@@ -148,3 +148,27 @@ details summary { cursor: pointer; color: var(--brand); }
 
 .score-big { font-size: 3rem; font-weight: 800; margin: 8px 0; }
 .row-gap { display: flex; gap: 12px; margin-top: 20px; }
+
+/* Floating circular timer */
+.timing-card .timer { margin-left: 12px; font-weight: 700; }
+.floating-timer {
+  position: fixed;
+  right: 20px;
+  left: auto;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgba(255,255,255,0.12);
+  box-shadow: 0 8px 26px rgba(2,6,23,0.7);
+  z-index: 9999;
+  cursor: pointer;
+}
+.floating-timer.timer-danger { background: var(--red); border-color: rgba(255,255,255,0.12); }
+.floating-timer .timer-circle { font-weight: 800; color: #fff; font-size: 1rem; }
+

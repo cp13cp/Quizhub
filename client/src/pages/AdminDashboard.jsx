@@ -64,7 +64,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState('');
   const [rawText, setRawText] = useState('');
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', text_content: '', max_score: 100, category: '' });
+  const [form, setForm] = useState({ title: '', description: '', text_content: '', duration_minutes: 0, max_score: 100, category: '' });
   const [questions, setQuestions] = useState([emptyQuestion()]);
   const [pdf, setPdf] = useState(null);
 
@@ -137,6 +137,7 @@ export default function AdminDashboard() {
       fd.append('title', form.title);
       fd.append('description', form.description);
       fd.append('text_content', form.text_content);
+      fd.append('duration_minutes', form.duration_minutes);
       fd.append('max_score', form.max_score);
       fd.append('category', form.category);
       fd.append('questions', JSON.stringify(cleaned));
@@ -168,6 +169,7 @@ export default function AdminDashboard() {
         title: data.title,
         description: data.description || '',
         text_content: data.text_content || '',
+        duration_minutes: data.duration_minutes || 0,
         max_score: data.max_score || 100,
         category: data.category || ''
       });
@@ -264,6 +266,10 @@ export default function AdminDashboard() {
             </select>
           </label>
 
+          <label>Duration (minutes)
+            <input type="number" min={0} value={form.duration_minutes} onChange={set('duration_minutes')} />
+          </label>
+
           <div className="import-box">
             <strong>📄 Import questions from a PDF</strong>
             <p className="hint">
@@ -318,6 +324,7 @@ export default function AdminDashboard() {
             <div className="card-meta">
               <span>{s.question_count} question{s.question_count === 1 ? '' : 's'}</span>
               <span>Max: {s.max_score}</span>
+              {s.duration_minutes ? <span className="badge">{s.duration_minutes} min</span> : null}
               {s.category && <span className="badge">{s.category}</span>}
               {s.pdf_path && <a className="badge" href={s.pdf_path} target="_blank" rel="noreferrer">PDF ↗</a>}
             </div>
