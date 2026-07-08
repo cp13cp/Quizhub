@@ -7,7 +7,8 @@ export const tokenStore = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
-const BASE = import.meta.env.VITE_API_BASE || '';
+// Prefer VITE_API_BASE, but fall back to the deployed Render URL for Netlify builds
+const BASE = import.meta.env.VITE_API_BASE || 'https://quizhub-jxn6.onrender.com';
 
 async function request(method, url, body, isForm = false) {
   const headers = {};
