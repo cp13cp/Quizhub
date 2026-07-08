@@ -7,6 +7,8 @@ export const tokenStore = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
+const BASE = import.meta.env.VITE_API_BASE || '';
+
 async function request(method, url, body, isForm = false) {
   const headers = {};
   const token = tokenStore.get();
@@ -20,7 +22,8 @@ async function request(method, url, body, isForm = false) {
     payload = JSON.stringify(body);
   }
 
-  const res = await fetch(url, { method, headers, body: payload });
+  const finalUrl = url.startsWith('http') ? url : `${BASE}${url}`;
+  const res = await fetch(finalUrl, { method, headers, body: payload });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const error = new Error(data.error || `Request failed (${res.status})`);
