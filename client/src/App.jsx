@@ -9,23 +9,32 @@ import ReviewSubmission from './pages/ReviewSubmission.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import AdminSubmissions from './pages/AdminSubmissions.jsx';
 
+import { useState } from 'react';
+
 function NavBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
   if (!user) return null;
+
   return (
     <nav className="navbar">
-      <Link to="/" className="brand">QuizHub</Link>
-      <div className="nav-links">
+      <div className="navbar-top">
+        <Link to="/" className="brand">QuizHub</Link>
+        <button className="menu-toggle" onClick={() => setOpen((prev) => !prev)}>
+          {open ? 'Close' : 'Menu'}
+        </button>
+      </div>
+      <div className={`nav-links ${open ? 'open' : ''}`}>
         {user.role === 'admin' ? (
           <>
-            <Link to="/admin">Question Sets</Link>
-            <Link to="/admin/submissions">Submissions</Link>
+            <Link to="/admin" onClick={() => setOpen(false)}>Question Sets</Link>
+            <Link to="/admin/submissions" onClick={() => setOpen(false)}>Submissions</Link>
           </>
         ) : (
           <>
-            <Link to="/">Available</Link>
-            <Link to="/history">My Results</Link>
+            <Link to="/" onClick={() => setOpen(false)}>Available</Link>
+            <Link to="/history" onClick={() => setOpen(false)}>My Results</Link>
           </>
         )}
         <span className="nav-user">{user.name} · {user.role}</span>
