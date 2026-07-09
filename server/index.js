@@ -1,4 +1,6 @@
-﻿const express = require('express');
+﻿require('dotenv').config();
+
+const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
@@ -11,7 +13,7 @@ const { parseQuizText } = require('./quizParser');
 const { extractPdfText } = require('./pdfText');
 
 const app = express();
-const PORT = process.env.PORT || 4001;
+const PORT = process.env.PORT || 4002;
 
 app.use(cors());
 app.use(express.json());

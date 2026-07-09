@@ -72,3 +72,4 @@ After importing, the extracted questions fill the builder so you can **review an
 - The SQLite database file `server/data.db` is created automatically on first run.
 - Uploaded PDFs are stored in `server/uploads/`.
 - For production, set a strong `JWT_SECRET` environment variable and put the API behind HTTPS. The "Admin" self-signup option is convenient for development — lock it down before deploying.
+- On Render, the app directory is not guaranteed to persist across restarts or deploys. Use a persistent disk or set `DB_PATH` to a mounted persistent location so `data.db` is not lost.
