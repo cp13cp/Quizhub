@@ -15,8 +15,26 @@ const { extractPdfText } = require('./pdfText');
 const app = express();
 const PORT = process.env.PORT || 4002;
 
-app.use(cors());
+// Allow all origins by default; set CORS_ORIGIN (comma-separated) to restrict.
+let corsOrigins = process.env.CORS_ORIGIN;
+if (corsOrigins == null || String(corsOrigins).trim() === '') {
+  corsOrigins = true;
+} else {
+  const raw = String(corsOrigins).trim();
+  corsOrigins = raw === '*' ? true : raw.split(',').map((o) => o.trim()).filter(Boolean);
+  if (Array.isArray(corsOrigins) && corsOrigins.length === 0) {
+    corsOrigins = true;
+  }
+}
+const corsOptions = { origin: corsOrigins, credentials: true, optionsSuccessStatus: 200 };
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
+
+// Wraps async route handlers so rejected promises reach the error middleware
+// below instead of becoming unhandled rejections that crash the process
+// (Express 4 does not await async handlers).
+const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
