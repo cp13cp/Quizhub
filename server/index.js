@@ -13,7 +13,7 @@ const { parseQuizText } = require('./quizParser');
 const { extractPdfText } = require('./pdfText');
 
 const app = express();
-const PORT = process.env.PORT || 4002;
+const PORT = process.env.PORT || 4003;
 
 // Allow all origins by default; set CORS_ORIGIN (comma-separated) to restrict.
 let corsOrigins = process.env.CORS_ORIGIN;
@@ -29,7 +29,25 @@ if (corsOrigins == null || String(corsOrigins).trim() === '') {
 const corsOptions = { origin: corsOrigins, credentials: true, optionsSuccessStatus: 200 };
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(express.json());
+
+// Capture raw request body so we can log malformed JSON on parse failures
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    try { req.rawBody = buf && buf.toString(); } catch (_) { req.rawBody = undefined; }
+  },
+}));
+
+// Log incoming auth requests (helps diagnose malformed requests from the client)
+app.use((req, res, next) => {
+  try {
+    if (req.path && req.path.startsWith('/api/auth')) {
+      console.log('AUTH REQUEST:', req.method, req.path, 'content-type=', req.headers['content-type']);
+    }
+  } catch (e) {
+    // ignore logging errors
+  }
+  next();
+});
 
 // Wraps async route handlers so rejected promises reach the error middleware
 // below instead of becoming unhandled rejections that crash the process
@@ -510,9 +528,14 @@ app.patch('/api/submissions/:id/grade', requireAuth, requireAdmin, async (req, r
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(400).json({ error: err.message || 'Something went wrong' });
+app.use((err, req, res, _next) => {
+  console.error('Unhandled error:', err && err.stack ? err.stack : err);
+  if (req && req.rawBody) console.error('Raw request body (may be malformed):', req.rawBody);
+  const code = (err && err.statusCode) || (err && err.status) || 400;
+  res.status(code).json({ error: err.message || 'Something went wrong' });
 });
 
 app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
+// Startup diagnostics to help troubleshooting deployed environment issues
+console.log('Resolved CORS origins:', JSON.stringify(corsOrigins));
+console.log('Mongo URI present:', !!process.env.MONGO_URI);

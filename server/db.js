@@ -20,7 +20,9 @@ async function connect() {
   if (database) return database;
   if (!connectingPromise) {
     connectingPromise = (async () => {
-      client = new MongoClient(uri);
+      client = new MongoClient(uri, {
+        serverSelectionTimeoutMS: 10000,
+      });
       await client.connect();
       const parsed = new URL(uri);
       const dbName = parsed.pathname.replace(/^\/+/, '') || 'quiz_app';
@@ -41,7 +43,14 @@ async function connect() {
       await database.collection('submissions').createIndex({ id: 1 }, { unique: true });
       await database.collection('submissions').createIndex({ user_id: 1, submitted_at: -1 });
       return database;
-    })();
+    })().catch((error) => {
+      // Reset so the next request can retry instead of being stuck with a
+      // permanently-rejected promise until the process restarts.
+      connectingPromise = null;
+      client = null;
+      database = null;
+      throw error;
+    });
   }
 
   return connectingPromise;
