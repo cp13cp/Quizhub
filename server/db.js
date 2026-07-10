@@ -144,6 +144,21 @@ class PreparedStatement {
       }));
     }
 
+    // Fallback: some SQL formatting may differ (newlines/case); handle generic
+    // queries that select from question_sets ordered by created_at desc.
+    if (sql.includes('from question_sets') && sql.includes('order by qs.created_at desc')) {
+      const rows = await db.collection('question_sets').find({}).sort({ created_at: -1 }).toArray();
+      const users = await db.collection('users').find({ id: { $in: rows.map((row) => row.created_by).filter(Boolean) } }).toArray();
+      const userMap = new Map(users.map((user) => [user.id, user]));
+      const questions = await db.collection('questions').find({ question_set_id: { $in: rows.map((row) => row.id) } }).toArray();
+      const counts = Object.fromEntries(rows.map((row) => [row.id, questions.filter((q) => q.question_set_id === row.id).length]));
+      return normalizeDocs(rows).map((row) => ({
+        ...row,
+        creator_name: userMap.get(row.created_by)?.name || null,
+        question_count: counts[row.id] || 0,
+      }));
+    }
+
     if (sql.includes('from submissions s') && sql.includes('join question_sets qs') && sql.includes('join users u')) {
       const rows = await db.collection('submissions').find({}).sort({ submitted_at: -1 }).toArray();
       const questionSets = await db.collection('question_sets').find({ id: { $in: rows.map((row) => row.question_set_id).filter(Boolean) } }).toArray();
